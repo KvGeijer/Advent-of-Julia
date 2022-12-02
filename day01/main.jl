@@ -15,7 +15,7 @@ function main(input="input.txt")
     end
     
     println(maximum(calories))
-    println(sum(sort(calories)[end-3:end]))
+    println(sum(sort(calories)[end-2:end]))
     
     
 end

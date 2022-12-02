@@ -50,7 +50,7 @@ Base.iterate(::LinkedList, node::Nil) = nothing
 Base.iterate(::LinkedList, node::Node) = (node, node.next)
 
 # Slow length function
-function length(list::LinkedList)
+function Base.length(list::LinkedList)
     l = 0
     for el in list
         l += 1
