@@ -1,28 +1,17 @@
 function main(input="input.txt")
-    moves = split.(readlines(input))
-    total1 = 0
+    moves = map(line -> (line[1] - 'A', line[3] - 'X'), readlines(input))
 
     # Part 1
-    for (opp, you) in moves
-        opp = opp[1] - 'A' + 1
-        you = you[1] - 'X' + 1
-
-        total1 += you
-        total1 += ((you - opp + 4) % 3) * 3
+    rounds1 = map(moves) do (opp, you)
+        you + 1 + ((you - opp + 4) % 3) * 3
     end
-    println(total1)
+    println(sum(rounds1))
 
     # Part 2
-    total2 = 0 
-    for (opp, res) in moves
-        opp = opp[1] - 'A'
-        res = res[1] - 'X'
-        you = (opp + res + 5) % 3 + 1
-        
-        total2 += you
-        total2 += res*3
+    rounds2 = map(moves) do (opp, res)
+        (opp + res + 5) % 3 + 1 + res*3
     end
-    println(total2)
+    println(sum(rounds2))
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
