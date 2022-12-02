@@ -4,7 +4,21 @@ function parse_int_vec(file="input.txt")
     parse.(Int, readlines(file))
 end
 
-# TODO: parse_int_mat
+# parse a vec of vecs with given splits and type of elems
+function parse_vecvec(;type=Int, colsep=' ', rowsep='\n', file="input.txt")
+    vecvec = split.(split(strip(read(file, String)), rowsep), colsep)
+    
+    if type == Int
+        map.(el -> parse(Int, el), vecvec)
+    elseif type == Char
+        map.(string -> string[1], vecvec)
+    elseif type == String
+        map.(string -> String(string), vecvec) #Don't want substring
+    end
+end 
+
+parse_mat(;colsep=' ', type=Int, file="input.txt") =
+    reduce(hcat, parse_vecvec(colsep=colsep, file=file, type=Type))'
 
 # Applies a regex to each line and collects the substrings
 function parse_re_lines(regex, file="input.txt")
