@@ -14,9 +14,11 @@ mutable struct LinkedList{T}
     tail:: ListNode{T}
 end
 
+
 listnil(T) = Nil{T}() 
 linkedlist(T) = LinkedList{T}(listnil(T), listnil(T))
 listnode(el, next) = Node{typeof(el)}(el, next)
+isnil(node) = typeof(node) <: Nil
 
 function add_first!(list:: LinkedList, el)
     prev = list.head
@@ -27,7 +29,7 @@ function add_first!(list:: LinkedList, el)
     end
 end
 
-function add_last!(el)
+function add_last!(list, el)
     new = listnode(el, listnil(typeof(el)))
     if typeof(list.head) <: Nil
         list.tail = new
