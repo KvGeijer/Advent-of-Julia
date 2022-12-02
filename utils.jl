@@ -18,3 +18,16 @@ function parse_int_re_lines(file, regex)
     end
 end
 
+# This should be in stdlib, but can't find it.
+# findmax does not seem to work well on dicts
+# Find the element which is maximized by f
+function maxby(f, it)
+    largest = nothing    # Assumes at least one element
+    for el in it
+        if isnothing(largest) || f(el) > largest[1]
+            largest = (f(el), el)
+        end
+    end
+    largest[2]
+end
+
