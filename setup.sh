@@ -5,7 +5,8 @@
 # Script for starting each day
 mkdir day$1
 cp utils.jl day$1
+cp -r ./utils day$1/utils
 cp main-templ.jl day$1/main.jl
 cd day$1
 
-aocdl -output input.in -wait
+aocdl -wait
