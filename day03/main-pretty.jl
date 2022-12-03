@@ -1,6 +1,3 @@
-# Copy paste utils into file 
-include("utils.jl")
-
 function priority(char)
     if isuppercase(char)
         char - 'A' + 27
@@ -10,7 +7,7 @@ function priority(char)
 end
 
 function main(input="input.txt")
-    rugsacks = parse_vecvec(type=Char, colsep=""; file=input)
+    rugsacks = readlines(input)
     
     # Part 1
     priorities = map(rugsacks) do sack
