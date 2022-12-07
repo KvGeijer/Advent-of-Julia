@@ -82,7 +82,6 @@ function main(input="input.txt")
     end 
 
     println(best)
-
     
 end
 
