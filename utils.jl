@@ -18,7 +18,7 @@ function parse_vecvec(;type=Int, colsep=' ', rowsep='\n', file="input.txt")
 end 
 
 parse_mat(;colsep=' ', type=Int, file="input.txt") =
-    reduce(hcat, parse_vecvec(colsep=colsep, file=file, type=Type))'
+    reduce(hcat, parse_vecvec(colsep=colsep, file=file, type=type))'
 
 # Applies a regex to each line and collects the substrings
 function parse_re_lines(regex, file="input.txt")
