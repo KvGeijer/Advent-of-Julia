@@ -5,7 +5,7 @@ function parse_int_vec(file="input.txt")
 end
 
 # parse a vec of vecs with given splits and type of elems
-function parse_vecvec(;type=Int, colsep=' ', rowsep='\n', file="input.txt")
+function parse_vecvec(file="input.txt"; type=Int, colsep=' ', rowsep='\n')
     vecvec = split.(split(strip(read(file, String)), rowsep), colsep)
     
     if type == Int
@@ -17,18 +17,18 @@ function parse_vecvec(;type=Int, colsep=' ', rowsep='\n', file="input.txt")
     end
 end 
 
-parse_mat(;colsep=' ', type=Int, file="input.txt") =
+parse_mat(file, ;colsep=' ', type=Int) =
     reduce(hcat, parse_vecvec(colsep=colsep, file=file, type=type))'
 
 # Applies a regex to each line and collects the substrings
-function parse_re_lines(regex, file="input.txt")
+function parse_re_lines(file, regex)
     map(readlines(file)) do line
         collect(match(regex, line))
     end
 end
 
 # Parses lines according to regex and parses to ints
-parse_int_re_lines(regex, file="input.txt") =
+parse_int_re_lines(file, regex) =
     map.(el -> parse(Int, el), parse_re_lines(regex, file))
 
 # This should be in stdlib, but can't find it.
@@ -57,4 +57,11 @@ function splitit(it, delim=nothing)
     end
     push!(res, chunk)
     filter(chunk -> chunk != [], res) 
+end
+
+# Print a matrix with 1 char long elements
+function printmat(mat)
+    for row in 1:size(mat)[1]
+        join(mat[row, :]) |> println
+    end
 end
