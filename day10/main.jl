@@ -9,7 +9,7 @@ function main(input="input.txt")
     crt = Int.(zeros(high+1, wide))
     y = x = 0
 
-    instructions = parse_vecvec(file=input, type=String)
+    instructions = parse_vecvec(input, type=String)
     
     regs = Dict("X" => 1)
     wait = 0
