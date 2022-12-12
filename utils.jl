@@ -18,7 +18,7 @@ function parse_vecvec(file="input.txt"; type=Int, colsep=' ', rowsep='\n')
 end 
 
 parse_mat(file, ;colsep=' ', type=Int) =
-    reduce(hcat, parse_vecvec(colsep=colsep, file=file, type=type))'
+    reduce(hcat, parse_vecvec(file, colsep=colsep, type=type)) |> permutedims
 
 # Applies a regex to each line and collects the substrings
 function parse_re_lines(file, regex)
@@ -64,4 +64,41 @@ function printmat(mat)
     for row in 1:size(mat)[1]
         join(mat[row, :]) |> println
     end
+end
+
+# Find all neighbors to a point in 2D or 3D
+function adj(coord, nbrneighs=8, lower=nothing, upper=nothing)
+    # println(upper)
+    neighs = 
+        if length(coord) == 2
+            # 2D
+            neighs = map(p -> p .+ coord, collect(Iterators.product(-1:1, -1:1)))
+            if nbrneighs == 4
+                filter(p -> sum(abs.(coord .- p)) == 1, neighs)
+            elseif nbrneighs == 8
+                neighs
+            else
+                println("invalid neigbors for adj!")
+                exit(0)
+            end
+        else
+             # 3D       
+            neighs = map(p -> p .+ coord, collect(Iterators.product(-1:1, -1:1, -1:1)))
+            if nbrneighs == 6
+                filter(p -> sum(abs.(coord .- p)) == 1, neghs)
+            elseif nbrneighs == 26
+                neighs
+            else
+                println("invalid neigbors for adj!")
+                exit(0)
+            end
+        end
+    neighs = filter(p -> p != coord, neighs)
+    if lower != nothing
+        neighs = filter(p -> all(p .>= lower), neighs)
+    end
+    if upper != nothing
+        neighs = filter(p -> all(p .<= upper), neighs)
+    end
+    neighs
 end
