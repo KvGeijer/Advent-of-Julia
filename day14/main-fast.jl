@@ -17,29 +17,29 @@ function parse_rocks(input)
 end
 
 function main(input="input.txt")
-    debris = parse_rocks(input)
-    sand = Set()
-    reachable = Set([[500, 0]])
+    @time begin
+        debris = parse_rocks(input)
+        sand = [[500]]
 
-    bottom = maxby(p -> p[2], debris)[2] + 2
+        bottom = maxby(p -> p[2], debris)[2] + 1
 
-    while !isempty(reachable)
-        coord = pop!(reachable)
-        if coord in sand
-            continue
-        end
-        push!(sand, coord)
-        for dir in -1:1
-            next = coord + [dir, 1]
-            if !(next in debris) && next[2] != bottom
-                push!(reachable, next)
-                # println("Pushing")
-                # println(reachable)
+        for y in 1:bottom
+            lastlayer = sand[end]
+            layer = []
+        
+            minx = lastlayer[1] - 1
+            for lastx in lastlayer
+                for x in max(minx, lastx-1):(lastx+1)
+                    if !([x,y] in debris) 
+                        push!(layer, x)
+                    end
+                end
+                minx = lastx+2
             end
+            push!(sand, layer)
         end
-        # println(length(reachable))
     end
-    println(length(sand))
+    println(sum(length.(sand)))
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
