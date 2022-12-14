@@ -5,7 +5,7 @@ function parse_rocks(input)
     for line in readlines(input)
         coords = map(pair -> parse.(Int, pair), split.(split(line, " -> "), ','))
         for (prev, next) in zip(coords[1:end-1], coords[2:end])
-            diff = to_base_vecs(next - prev)
+            diff = sign.(next - prev)
             while (prev != next)
                 push!(rocks, prev)
                 prev = prev + diff
