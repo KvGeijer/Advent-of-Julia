@@ -102,3 +102,6 @@ function adj(coord, nbrneighs=8, lower=nothing, upper=nothing)
     end
     neighs
 end
+
+to_base_vecs(vec) =
+    [(x > 0 ? 1 : (x < 0 ? -1 : 0)) for x in vec]
