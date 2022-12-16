@@ -18,7 +18,7 @@ function get_move_states(at, graph, time)
 end
 
 function maybe_add_state(state, memo_dict, memo_value)
-    if state in keys(memo_dict)
+    if haskey(memo_dict, state)
         # Already reachable then, so just keep best one!
         memo_dict[state] = max(
             memo_value,
@@ -119,8 +119,8 @@ function bfs(aa_ind, graph, flows)
             stat_state_symm = (el_state[3], you_state[3], open)
 
             # This check might be very slow, don't know how sets are implemented in Julia
-            if stat_state in keys(states) && states[stat_state] >= pressure ||
-               stat_state_symm in keys(states) && states[stat_state_symm] >= pressure
+            if haskey(states, stat_state) && states[stat_state] >= pressure ||
+               haskey(states, stat_state_symm) && states[stat_state_symm] >= pressure
                 # Must have come here faster, but while not having lost pressure
                 continue
             end
