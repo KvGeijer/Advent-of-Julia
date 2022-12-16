@@ -1,93 +1,153 @@
 # Copy paste utils into file 
 include("utils.jl")
 
-#using DataStructures
+# Memoization state is (at_you, at_elephant, open)
+# Move_state is ((you, you_arrive, you_next), (el, el_arrive, el_next), open)
 
-# State is just (at, open)
-
-function get_neigh_states(state, graph, time)
-    at = state[1]
-    open = state[2]
-
-    time_states = []
+# Should return which 
+function get_move_states(at, graph, time)
+    
+    move_states = []
     for (neigh, dist) in graph[at]
+    
         # We dont open anything, just move
-        new_time = time + dist
-        new_at = neigh
-        new_open = open 
-        push!(time_states, (new_time, (new_at, new_open)))
+        arr = time + dist
+        push!(move_states, (at, arr, neigh))
     end
-    time_states
+    move_states
 end
 
-function maybe_add_state(state, reachable_dict, pressure)
-    if state in keys(reachable_dict)
+function maybe_add_state(state, memo_dict, memo_value)
+    if state in keys(memo_dict)
         # Already reachable then, so just keep best one!
-        # TODO: Do we avoid states if they already have been reached with better results?
-        reachable_dict[state] = max(
-            pressure,
-            reachable_dict[state]
+        memo_dict[state] = max(
+            memo_value,
+            memo_dict[state]
         )
     else
-        reachable_dict[state] = pressure
+        memo_dict[state] = memo_value
     end
 end
 
-function bfs(starting_state, graph, flows)
+# All possible personal move states you can transition to, 
+# and how it increases pressure and changes open
+function possible_moves(person_state, time, graph, open, flows)
+    if time != person_state[2]
+        # It is still travelling, so it can't do anything
+        return [(open, 0, person_state)]
+    end
+
+    # type: [(open, pressure-delta, personal_move_state)]
+    results = []
+
+    # We have just arrived at our destination
+    at = person_state[3]
+
+    # If valve closed, create state to open it
+    valve_mask = 1 << at
+    if (open & valve_mask) == 0
+        # Closed, we can open it
+        open_pressure = flows[at]*(26-time)
+        open_state = (at, time + 1, at)
+        new_open = open | valve_mask
+
+        push!(results, (new_open, open_pressure, open_state))
+    end
+
+    # Now, which new states can we travel to from this one?
+    for move_state in get_move_states(at, graph, time)
+        # We don't change the pressure or open in any of the move states
+        push!(results, (open, 0, move_state))
+    end
+    results
+end
+
+function get_next_states(you_state, el_state, time, pressure, graph, open, flows)
+    # All possible states the human and elephant can get to currently
+    states = []
+    for (you_open, you_press, you_state) in possible_moves(you_state, time, graph, open, flows)
+        for (el_open, el_press, el_state) in possible_moves(el_state, time, graph, open, flows)
+            if you_open == el_open != open
+                # Don't let them open the same valve!
+                continue
+            end
+            
+            # Now we have a new possible move_state, so add it!
+            new_pressure = pressure + you_press + el_press
+            new_time = min(you_state[2], el_state[2])
+            move_state = (you_state, el_state, el_open | you_open)
+
+            push!(states, (new_pressure, new_time, move_state))
+        end
+    end
+    states
+end
+
+function bfs(aa_ind, graph, flows)
+    # This function runs a bfs style search through all reachable states,
+    # Using memoization to not have to visit already visited states,
+    # or states which are strictly worse thn a visited one.
+    # This is the bottle neck, by far...
+
+    # Maybe not optimal to use a dict of nested tuples, but only constant time worse
     states = Dict()
 
-    # Init reachable list, don't add chance to turn on A...
-    # Reachable at each index is all states we can reach in that time,
-    # And how much they will have released then.
-    reachable = [Dict() for _ in 1:100]
-    for (neigh, dist) in graph[starting_state[1]]
-        neigh_state = (neigh, 0)
-        reachable[dist][neigh_state] = 0
-    end
+    # Reachable at each index is all move_states we can reach at that time,
+    # and the key is how much they will have released then. 
+    # When we open a valve, we count as if all pressure is being let out instantaneously.
+    reachable = [Dict() for _ in 1:100]    # to 100 just to not worry about index out of bound
+
+    # Say AA starts as open, just to not open it, as it has pressure 0
+    start_open = 1 << aa_ind
+    # A presonal move state, (from_valve, arrival_time, next_valve)
+    start_state = (0, 1, aa_ind)
+    reachable[1][(start_state, start_state, start_open)] = 0
 
     best = 0
 
-    for time in 1:29
-        for (state, pressure) in reachable[time]
-            # println("State $state, pressure $pressure")
-        
-            # Is this state already visited? If so keep the one with the best flow
-            if state in keys(states) && states[state] >= pressure
+    # Change to 29 for part 1
+    for time in 1:25
+        # Log each iteration
+        println("Time: $time, best: $best, nbr reachable: $(length(reachable[time]))")
+        for (move_state, pressure) in reachable[time]
+            you_state = move_state[1]
+            el_state = move_state[2]
+            open = move_state[3]
+
+            # Check if the state we are going to is already visited. (symmetry also checked)
+            stat_state = (you_state[3], el_state[3], open)
+            stat_state_symm = (el_state[3], you_state[3], open)
+
+            # This check might be very slow, don't know how sets are implemented in Julia
+            if stat_state in keys(states) && states[stat_state] >= pressure ||
+               stat_state_symm in keys(states) && states[stat_state_symm] >= pressure
                 # Must have come here faster, but while not having lost pressure
                 continue
             end
-            # Memoize the state
-            states[state] = pressure
-
-            # We can either open the valve (if not already open, or walk)
-            valve_mask = 1<<state[1]
-            if (state[2] & valve_mask) == 0
-                # Closed, we can open it
-                # ERROR: This can be off by one?
-                open_pressure = flows[state[1]]*(30-(time+1)) + pressure
-                open_state = (state[1], state[2] | valve_mask)
-                open_time = time + 1
-                # println("valve_mask $valve_mask, open_pressure: $open_pressure")
-                
-                
-                maybe_add_state(open_state, reachable[open_time], open_pressure)
-                best = max(best, open_pressure)
-                # println("Opening $(state[1]) at $(time+1), with total pressure $open_pressure, and prev $pressure")
-            end
-
-            # Now, which new states can we reach from this one?
-            new_reachable = get_neigh_states(state, graph, time)
-            for (neigh_time, neigh_state) in new_reachable
-                maybe_add_state(neigh_state, reachable[neigh_time], pressure)
-            end
             
+            # Memoize the current state (actually most recently visited)
+            stat_past_state = (
+                if you_state[2] == time you_state[3] else you_state[1] end,
+                if el_state[2] == time el_state[3] else el_state[1] end,
+                open
+            )
+            maybe_add_state(stat_past_state, states, pressure)
+
+            # Now we check all possible moves for the elephant and the human
+            new_states = get_next_states(you_state, el_state, time, pressure, graph, open, flows)
+            for (new_pressure, new_time, new_state) in new_states
+                # Add them to reachable
+                maybe_add_state(new_state, reachable[new_time], new_pressure)
+                best = max(best, new_pressure)
+            end
         end
     end
-    println("Part1: $best")
+    println("Part2: $best")
 end
 
 function get_neighs(valve, valves, visited)
-    # Find all neighs, using bfs style
+    # Reduce graph by removing all valves with 0 pressure
+    # Nit the prettiest, but the idea is nice and we have bigger problems...
     reachable = [neigh for neigh in valves[valve][3]]
     neighs = Dict()
     visited = Set()
@@ -112,60 +172,48 @@ function get_neighs(valve, valves, visited)
         steps += 1
     end
 
-    neighs
+    collect(neighs)
 end
 
 function main(input="input.txt")
-    # Could optimize away all valves without flow to just get a graph!
     rstr = r"Valve (..) has flow rate=(\d+); tunnels? leads? to valves? (.*)"
     valves = map(parse_re_lines(input, rstr)) do (valve, flow, paths)
         (valve, parse(Int,flow), split(paths, ", "))
     end
 
-
-    valves_dict = Dict()
-
-    # Dynamic programming?
-    ind = 1
+    # Use ints instead of strings for faster computation
     val_to_int = Dict()
-    int_to_val = Dict()
-    for valve in valves
+    for (ind, valve) in enumerate(valves)
         val_to_int[valve[1]] = ind
-        int_to_val[ind] = valve[1]
-        ind += 1
     end
-
     int_valves = []
     for valve in valves
         new_valve = val_to_int[valve[1]]
         new_neighs = map(n -> val_to_int[n], valve[3]) 
         push!(int_valves, (new_valve, valve[2], new_neighs))
-        # println(int_valves[end])
     end
 
-    real_valves = filter(s -> s[2] != 0, int_valves)
-    graph = Dict()
-    for (valve, flow, neighs) in real_valves
-        neighs = get_neighs(valve, int_valves, Set([valve[1]]))
-        graph[valve] = neighs
+    # Reduce the valves to a map with only the relevant ones
+    graph = []
+    for (valve, flow, neighs) in int_valves
+        neighs = 
+            if flow > 0
+                get_neighs(valve, int_valves, Set([valve[1]]))
+            else
+                []
+            end
+        push!(graph, neighs)   
     end
 
+    # Add "AA" to graph, as we start there
     aa_ind = val_to_int["AA"]
     graph[aa_ind] = get_neighs(aa_ind, int_valves, Set(aa_ind))
 
-    flows = Dict([(valve, flow) for (valve, flow, _) in int_valves])
+    # Just an array for how muh flow is in each valve
+    flows = [flow for (_valve, flow, _) in int_valves]
 
-    starting_state = (aa_ind, 0)
-    # Maybe make this nicer?
-
-    # Make a bfs like search, reacbhable is which states we can reach togher in what time
-    # Then we iterate over time, adding the best possible states
-    bfs(starting_state, graph, flows)
-
-    # beststate = values(states) |> maximum |> println
-    # dfs(states, startin_state.at, valves_to_inds)
-
-    # (graph, valves_dict)    
+    # The meat, do a bfs style search over the search space, with memoization
+    bfs(aa_ind, graph, flows)
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
