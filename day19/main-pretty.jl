@@ -3,7 +3,6 @@ include("utils.jl")
 
 
 function can_build_in(robots, inv, cost)
-    robots = robots[1:3]
     if all(inv .>= cost)
         1
     else
@@ -11,87 +10,44 @@ function can_build_in(robots, inv, cost)
         time = (cost - inv)./robots
         time = maximum(time[nonzero])
         if time == Inf
-            false
+            Inf
         else
             1 + ceil(Int, time)
         end
     end    
 end
 
-function bfs2(total_time, costs, init_robots)
-    # Reachable are the bfs frontiers. So reachable[i] are all the possilbe
-    # states we can reach at time i.
-    reachable = [[] for _ in 1:total_time]
-    for build in 1:3
-        can_build = can_build_in(init_robots, [0,0,0], costs[build, :])
-        if can_build != false
-            # How much we have after completng the robot
-            new_inv = can_build.*init_robots[1:3] - costs[build, :]
-            robots = copy(init_robots)
-            robots[build] += 1
-            push!(reachable[can_build], (robots, new_inv, 0))
-        end
+function dfs(inventory, robots, cache, time_left, costs, max_costs)
+    hash = (inventory..., robots..., time_left)
+    cached = get(cache, hash, nothing)
+    if cached != nothing
+        return cached
     end
-
-    # Set of all (robots, inventory, geo) which have already been reached.
-    # Not really normal dynamic programming, but if a state has already been
-    # found we con't have to do it again. But we don't save a value for it.
-    cache = Set()
-
-    max_costs = [maximum(costs[1:end, type]) for type in 1:3]
 
     best = 0
-    for time in 1:(total_time - 1)
-        for (robots, inv, geo) in reachable[time]
+    for robot_type in (i for i in 1:4 if i == 4 || robots[i] < max_costs[i])
+        build_time = can_build_in(robots, inventory, costs[robot_type, :])
+        if build_time != Inf && build_time < time_left
+            new_time = time_left - build_time
+            new_inv = inventory + build_time.*robots - costs[robot_type, :]
+            new_robots = copy(robots)
 
-            # The robots we will try to build.
-            # Don't build a robot if we have already maxed out that production.
-            # In that case also remove excess from inv to shrink state space.
-            try_build = [4]
-            for type in 1:3
-                if robots[type] == max_costs[type]
-                    inv[type] = min(max_costs[type], inv[type])
-                else
-                    push!(try_build, type)
-                end
-            end
-        
-            # If we have already cache the state, just continue
-            hash = tuple(robots..., inv..., geo)
-            if hash in cache
-                continue
-            else
-                push!(cache, hash)
+            if robot_type != 4
+                new_robots[robot_type] += 1
             end
             
-            # Try and build the different robots, spawn a new state for each
-            for build in try_build
-                can_build = can_build_in(robots, inv, costs[build, :])
-                if can_build != false && can_build + time < total_time
-                    # Can build is the time until the robot is finished
-                    new_time = time + can_build
-                    new_inv = inv + can_build.*robots[1:3] - costs[build, :]
-                    new_robots = copy(robots)
-                    new_robots[build] += 1
-
-                    if build == 4
-                        new_geo = geo + total_time - new_time
-                        best = max(best, new_geo)
-                        push!(reachable[new_time], (new_robots, new_inv, new_geo))
-                        if can_build == 1
-                            # If we can build geo, we always do. Only uncertain heuristic
-                            break
-                        end
-                    else
-                        push!(reachable[new_time], (new_robots, new_inv, geo))
-                    end
-                end
+            geodes = dfs(new_inv, new_robots, cache, new_time, costs, max_costs)
+            if robot_type == 4 && build_time == 1
+                best = new_time + geodes
+                break
+            elseif robot_type == 4
+                geodes += new_time
             end
+            best = max(best, geodes)
         end
     end
-
+    cache[hash] = best
     best
-    
 end
 
 function parse_blueprints(input)
@@ -101,17 +57,22 @@ function parse_blueprints(input)
     end
 end
 
+function eval_blueprint(costs, time) 
+    max_costs = [maximum(Int, costs[1:end, type]) for type in 1:3]
+    dfs([0, 0, 0], [1, 0, 0], Dict(), time, costs, max_costs)
+end
+
 function main(input="input.txt")
     blueprints = parse_blueprints(input)
 
     # Part 1
     map(enumerate(blueprints)) do (ind, costs)
-        bfs2(24, costs, [1, 0, 0, 0]) * ind
+        eval_blueprint(costs, 24) * ind
     end |> sum |> println
 
     # Part 2
     map(blueprints[1:3]) do costs
-        bfs2(32, costs, [1, 0, 0, 0])
+        eval_blueprint(costs, 32)
     end |> prod |> println
 end
 
