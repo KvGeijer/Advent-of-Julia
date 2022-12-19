@@ -19,8 +19,8 @@ function can_build_in(robots, inv, cost)
 end
 
 function bfs2(total_time, costs, init_robots)
-    # The basic idea is, if we have already reached a certain configuration of robots, it is worse if we reach them again
-    # Reachable states:: (robots, inv, geodes, next_build)
+    # Reachable are the bfs frontiers. So reachable[i] are all the possilbe
+    # states we can reach at time i.
     reachable = [[] for _ in 1:total_time]
     for build in 1:3
         can_build = can_build_in(init_robots, [0,0,0], costs[build, :])
@@ -33,35 +33,39 @@ function bfs2(total_time, costs, init_robots)
         end
     end
 
-    # Keepts track of which robot configurations we have reached, and when. 
-    # Always better to reach faster?
-    # TODO: Implement this!
-    reached = Set()
+    # Set of all (robots, inventory, geo) which have already been reached.
+    # Not really normal dynamic programming, but if a state has already been
+    # found we con't have to do it again. But we don't save a value for it.
+    cache = Set()
 
     max_costs = [maximum(costs[1:end, type]) for type in 1:3]
 
     best = 0
     for time in 1:(total_time - 1)
         for (robots, inv, geo) in reachable[time]
-            builds = [4]
+
+            # The robots we will try to build.
+            # Don't build a robot if we have already maxed out that production.
+            # In that case also remove excess from inv to shrink state space.
+            try_build = [4]
             for type in 1:3
                 if robots[type] == max_costs[type]
                     inv[type] = min(max_costs[type], inv[type])
                 else
-                    push!(builds, type)
+                    push!(try_build, type)
                 end
             end
         
-            # If we have already reached the state, just continue
+            # If we have already cache the state, just continue
             hash = tuple(robots..., inv..., geo)
-            if hash in reached
+            if hash in cache
                 continue
             else
-                push!(reached, hash)
+                push!(cache, hash)
             end
             
-            # Which is the next robot we shall build?
-            for build in builds
+            # Try and build the different robots, spawn a new state for each
+            for build in try_build
                 can_build = can_build_in(robots, inv, costs[build, :])
                 if can_build != false && can_build + time < total_time
                     # Can build is the time until the robot is finished
@@ -74,8 +78,8 @@ function bfs2(total_time, costs, init_robots)
                         new_geo = geo + total_time - new_time
                         best = max(best, new_geo)
                         push!(reachable[new_time], (new_robots, new_inv, new_geo))
-                        # If we can build geo, we always do
                         if can_build == 1
+                            # If we can build geo, we always do. Only uncertain heuristic
                             break
                         end
                     else
