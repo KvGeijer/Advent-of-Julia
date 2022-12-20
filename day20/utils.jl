@@ -1,4 +1,4 @@
-include("./utils/linked_list.jl")
+# include("./utils/linked_list.jl")
 
 function parse_int_vec(file="input.txt")
     parse.(Int, readlines(file))
