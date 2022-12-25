@@ -5,18 +5,12 @@ to_decimal(str) =
     foldl((acc, val) -> acc*5 + val, parse.(Int, replace(split(str, ""), "-" => "-1", "=" => "-2")))
 
 function to_snafu(dec)
-    exp = 0
-    while dec >= 5^exp
-        exp += 1
-    end
-
     arr = []
-    for exp in reverse(0:exp)        
+    for exp in reverse(0:ceil(Int, log(5, dec)))        
         c = maxby(c -> -abs(dec - c*5^exp), -2:2)
         dec -= c*5^exp
         push!(arr, c)
     end
-    
     join(replace(arr, 1=>"1", 2=>"2", 0=>"0", -1=>"-", -2=>"="))
 end
 
